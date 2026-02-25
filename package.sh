@@ -6,7 +6,7 @@
 set -e
 
 EXTENSION_NAME="open-in-gmail"
-VERSION="1.0.0"
+VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('manifest.json','utf8')).version)")
 OUTPUT_FILE="${EXTENSION_NAME}.xpi"
 
 echo "Packaging ${EXTENSION_NAME} v${VERSION}..."

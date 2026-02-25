@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Open in Gmail",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Open the current email in Gmail web interface",
   "author": "Thunderbird Gmail Extension",
   "applications": {
