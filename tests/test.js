@@ -3,7 +3,7 @@
  */
 
 // Import the functions to test
-const { extractMessageId, constructGmailUrl, constructGmailFallbackUrl } = require('../background.js');
+const { extractMessageId, constructGmailUrl, constructGmailFallbackUrl, isGmailEmailDomain, hasGmailHeaders, pickIdentityEmail } = require('../background.js');
 
 // Simple test framework
 class TestRunner {
@@ -154,7 +154,7 @@ runner.test('extractMessageId - empty Message-ID array', () => {
 runner.test('constructGmailUrl - simple Message-ID', () => {
   const messageId = 'test123@gmail.com';
   const result = constructGmailUrl(messageId);
-  const expected = 'https://mail.google.com/mail/#search/rfc822msgid:test123%40gmail.com';
+  const expected = 'https://mail.google.com/mail/#search/rfc822msgid:test123%40gmail.com%20in%3Aanywhere';
 
   assertEquals(result, expected, 'Should construct correct Gmail URL');
 });
@@ -255,6 +255,51 @@ runner.test('constructGmailFallbackUrl - with account email adds authuser', () =
   const result = constructGmailFallbackUrl(message, 'user@gmail.com');
 
   assert(result.includes('?authuser=user%40gmail.com'), 'Should include authuser parameter');
+});
+
+runner.test('constructGmailFallbackUrl - double quotes in subject do not break the query', () => {
+  const result = constructGmailFallbackUrl({ subject: 'Say "hi" now', author: '' }, null);
+  assertEquals(result, 'https://mail.google.com/mail/#search/' + encodeURIComponent('subject:"Say  hi  now" in:anywhere'), 'Quotes should be neutralised');
+});
+
+runner.test('isGmailEmailDomain - gmail/googlemail match, others do not', () => {
+  assert(isGmailEmailDomain('a@gmail.com'), 'gmail.com');
+  assert(isGmailEmailDomain('a@GoogleMail.com'), 'googlemail.com, case-insensitive');
+  assert(!isGmailEmailDomain('a@example.com'), 'other domain');
+  assert(!isGmailEmailDomain(''), 'empty');
+  assert(!isGmailEmailDomain(null), 'null');
+  assert(!isGmailEmailDomain('no-at-sign'), 'no @');
+});
+
+runner.test('hasGmailHeaders - detects Gmail MX and DKIM headers', () => {
+  assert(hasGmailHeaders({ headers: { 'authentication-results': ['mx.google.com; dkim=pass'] } }), 'auth results array');
+  assert(hasGmailHeaders({ headers: { 'authentication-results': 'mx.google.com; spf=pass' } }), 'auth results string');
+  assert(hasGmailHeaders({ headers: { 'x-google-dkim-signature': ['v=1'] } }), 'x-google-dkim');
+  assert(!hasGmailHeaders({ headers: { 'authentication-results': ['mx.example.com'] } }), 'non-Gmail');
+  assert(!hasGmailHeaders({ headers: {} }), 'no headers');
+});
+
+runner.test('constructGmailUrl - searches all mail including spam and trash', () => {
+  assert(constructGmailUrl('x@y', null).endsWith('%20in%3Aanywhere'), 'Should append in:anywhere');
+});
+
+runner.test('constructGmailFallbackUrl - searches all mail', () => {
+  const result = constructGmailFallbackUrl({ subject: 'Hi', author: 'a@b.com' }, null);
+  assert(result.endsWith('%20in%3Aanywhere'), 'Should append in:anywhere');
+});
+
+runner.test('pickIdentityEmail - prefers identity present on the message', () => {
+  const ids = [{ email: 'main@gmail.com' }, { email: 'alias@gmail.com' }];
+  assertEquals(pickIdentityEmail(ids, { recipients: ['Me <Alias@Gmail.com>'], author: 'x@y.com' }), 'alias@gmail.com', 'recipient match, case-insensitive');
+  assertEquals(pickIdentityEmail(ids, { recipients: ['z@z.com'], ccList: ['alias@gmail.com'] }), 'alias@gmail.com', 'cc match');
+  assertEquals(pickIdentityEmail(ids, { recipients: [], author: 'Me <alias@gmail.com>' }), 'alias@gmail.com', 'author match (sent mail)');
+});
+
+runner.test('pickIdentityEmail - falls back to first identity or null', () => {
+  const ids = [{ email: 'main@gmail.com' }, { email: 'alias@gmail.com' }];
+  assertEquals(pickIdentityEmail(ids, { recipients: ['z@z.com'], author: 'q@q.com' }), 'main@gmail.com', 'no match');
+  assertEquals(pickIdentityEmail([], {}), null, 'no identities');
+  assertEquals(pickIdentityEmail(undefined, {}), null, 'undefined identities');
 });
 
 // Run all tests

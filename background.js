@@ -41,6 +41,39 @@ function hasGmailHeaders(fullMessage) {
 }
 
 /**
+ * Extract bare lowercase email addresses from header strings such as
+ * "Name <a@b.com>, c@d.com".
+ * @param {...(string|string[]|undefined)} values
+ * @returns {Set<string>}
+ */
+function extractAddresses(...values) {
+  const addresses = new Set();
+  for (const value of values.flat()) {
+    if (!value) continue;
+    const matches = String(value).match(/[^\s<>,;"']+@[^\s<>,;"']+/g) || [];
+    matches.forEach(m => addresses.add(m.toLowerCase()));
+  }
+  return addresses;
+}
+
+/**
+ * Choose which account identity to use for the authuser URL parameter.
+ * Prefers an identity that appears on the message (recipient, CC, BCC or author),
+ * falling back to the account's first identity.
+ * @param {Array<{email: string}>} identities
+ * @param {Object} message
+ * @returns {string|null}
+ */
+function pickIdentityEmail(identities, message) {
+  if (!identities || identities.length === 0) return null;
+  const onMessage = extractAddresses(
+    message?.recipients, message?.ccList, message?.bccList, message?.author
+  );
+  const match = identities.find(i => i.email && onMessage.has(i.email.toLowerCase()));
+  return (match || identities[0]).email || null;
+}
+
+/**
  * Get account email from message folder (used for the authuser URL parameter)
  * @param {Object} message - Message object
  * @returns {Promise<string|null>} - Account email or null
@@ -49,7 +82,7 @@ async function getAccountEmailFromMessage(message) {
   try {
     if (!message?.folder?.accountId) return null;
     const account = await browser.accounts.get(message.folder.accountId);
-    return account?.identities?.[0]?.email || null;
+    return pickIdentityEmail(account?.identities, message);
   } catch (error) {
     console.error("[Open in Gmail] Error getting account email:", error);
     return null;
@@ -133,7 +166,7 @@ function buildGmailUrl(encodedQuery, accountEmail) {
  * @returns {string} - Gmail search URL
  */
 function constructGmailUrl(messageId, accountEmail) {
-  return buildGmailUrl(`rfc822msgid:${encodeURIComponent(messageId)}`, accountEmail);
+  return buildGmailUrl(`rfc822msgid:${encodeURIComponent(messageId)}%20in%3Aanywhere`, accountEmail);
 }
 
 /**
@@ -148,7 +181,7 @@ function constructGmailFallbackUrl(message, accountEmail) {
 
   let searchQuery = "";
   if (subject) {
-    searchQuery += `subject:"${subject}"`;
+    searchQuery += `subject:"${subject.replace(/"/g, ' ')}"`;
   }
   if (author) {
     const emailMatch = author.match(/<([^>]+)>/);
@@ -160,6 +193,7 @@ function constructGmailFallbackUrl(message, accountEmail) {
   if (!searchQuery) {
     return null;
   }
+  searchQuery += " in:anywhere";
 
   return buildGmailUrl(encodeURIComponent(searchQuery), accountEmail);
 }
@@ -225,8 +259,9 @@ if (typeof browser !== 'undefined') {
         return;
       }
 
-      const fullMessage = await browser.messages.getFull(message.id);
       const accountEmail = await getAccountEmailFromMessage(message);
+
+      const fullMessage = await browser.messages.getFull(message.id);
       const messageId = extractMessageId(fullMessage);
 
       if (!messageId) {
@@ -253,5 +288,8 @@ if (typeof module !== 'undefined' && module.exports) {
     extractMessageId,
     constructGmailUrl,
     constructGmailFallbackUrl,
+    isGmailEmailDomain,
+    hasGmailHeaders,
+    pickIdentityEmail,
   };
 }
