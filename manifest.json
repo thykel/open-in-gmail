@@ -1,13 +1,13 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Open in Gmail",
   "version": "0.0.1",
   "description": "Open the current email in Gmail web interface",
   "author": "Thunderbird Gmail Extension",
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "{b87af2eb-dd17-4124-8f7e-f338f0a71b28}",
-      "strict_min_version": "78.0"
+      "strict_min_version": "128.0"
     }
   },
   "permissions": [

@@ -229,20 +229,31 @@ if (typeof browser !== 'undefined') {
     }
   }
 
-  browser.messageDisplay.onMessageDisplayed.addListener(async (tab, message) => {
+  /**
+   * MV3 replacement for getDisplayedMessage: resolves to the displayed message,
+   * or null when no message or several messages are displayed.
+   */
+  async function getSingleDisplayedMessage(tabId) {
+    const displayed = await browser.messageDisplay.getDisplayedMessages(tabId);
+    const messages = Array.isArray(displayed) ? displayed : displayed?.messages;
+    return messages?.length === 1 ? messages[0] : null;
+  }
+
+  browser.messageDisplay.onMessagesDisplayed.addListener(async (tab, displayed) => {
     try {
-      await updateButtonState(tab, message);
+      const messages = Array.isArray(displayed) ? displayed : displayed?.messages;
+      await updateButtonState(tab, messages?.length === 1 ? messages[0] : null);
     } catch (error) {
       console.error("Error checking account for message:", error);
       browser.messageDisplayAction.disable(tab.id);
     }
   });
 
-  // onMessageDisplayed doesn't re-fire when switching back to a folder where a message
+  // onMessagesDisplayed doesn't re-fire when switching back to a folder where a message
   // was already selected, so we also check on folder changes.
   browser.mailTabs.onDisplayedFolderChanged.addListener(async (tab, _displayedFolder) => {
     try {
-      const message = await browser.messageDisplay.getDisplayedMessage(tab.id);
+      const message = await getSingleDisplayedMessage(tab.id);
       await updateButtonState(tab, message);
     } catch (error) {
       console.error("Error checking account on folder change:", error);
@@ -252,7 +263,7 @@ if (typeof browser !== 'undefined') {
 
   browser.messageDisplayAction.onClicked.addListener(async (tab) => {
     try {
-      const message = await browser.messageDisplay.getDisplayedMessage(tab.id);
+      const message = await getSingleDisplayedMessage(tab.id);
 
       if (!message) {
         console.error("No message is currently displayed");
