@@ -5,8 +5,9 @@ A Thunderbird extension that adds an "Open in Gmail" button to quickly view the 
 ## Features
 
 - **One-click access**: Opens the current email in Gmail web interface with a single click
-- **Smart Message-ID lookup**: Uses RFC822 Message-ID for accurate email matching
+- **Smart Message-ID lookup**: Uses the RFC822 Message-ID to find the exact email, including in Spam and Trash
 - **Fallback search**: If Message-ID is unavailable, searches by subject and sender
+- **Multiple identities**: Picks the Google account that matches the message's recipients or author
 - **Native integration**: Button appears directly in the message display header
 - **Cross-platform**: Opens in your default system browser on macOS, Linux, and Windows
 
@@ -41,7 +42,7 @@ cd open-in-gmail
 
 ## Requirements
 
-- **Thunderbird**: Version 78.0 or later
+- **Thunderbird**: Version 128.0 or later
 - **Gmail account**: The email must exist in your Gmail or Google Workspace account
 - **Operating System**: macOS (tested), Linux, Windows
 
@@ -52,10 +53,12 @@ The extension uses two methods to locate emails in Gmail:
 1. **Primary Method - Message-ID**: Extracts the RFC822 Message-ID from email headers and uses Gmail's `rfc822msgid:` search operator
 2. **Fallback Method**: If Message-ID is unavailable, constructs a search query using the subject line and sender email
 
+Gmail has no URL that opens an arbitrary message by Message-ID, so the link opens a search that matches exactly that message. A direct `#all/<id>` link would need Gmail's internal ids, which Thunderbird only exposes to privileged Experiment APIs. This extension deliberately avoids those, so it asks for no more than the permissions listed below.
+
 ### Gmail URL Format
 
 ```
-https://mail.google.com/mail/?authuser=<email>#search/rfc822msgid:<message-id>
+https://mail.google.com/mail/?authuser=<email>#search/rfc822msgid:<message-id> in:anywhere
 ```
 
 ## Development
@@ -78,11 +81,7 @@ https://mail.google.com/mail/?authuser=<email>#search/rfc822msgid:<message-id>
 node tests/test.js
 ```
 
-All tests should pass:
-- Message-ID extraction tests (8 tests)
-- Gmail URL construction tests (5 tests)
-- Fallback URL construction tests (5 tests)
-- Integration tests (1 test)
+All tests should pass.
 
 ### Building
 
@@ -115,6 +114,12 @@ These permissions are only used to read the current email's Message-ID and open 
 - **Search accuracy**: Fallback search may show multiple results if subject/sender aren't unique
 
 ## Version History
+
+### 0.1.0
+- Migrated to Manifest V3; requires Thunderbird 128 or later
+- Pick the matching identity for the `authuser` parameter
+- Search all mail (`in:anywhere`) so messages in Spam and Trash are found
+- Escape double quotes in the subject fallback search
 
 ### 0.0.1 (2026-02-25)
 - Initial release
