@@ -27,7 +27,7 @@ echo ""
 
 if node tests/test.js; then
     echo ""
-    echo "✓ Unit tests PASSED (14/14 tests)"
+    echo "✓ Unit tests PASSED"
     PASSED_TESTS=$((PASSED_TESTS + 1))
 else
     echo ""
@@ -37,7 +37,7 @@ fi
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
 echo ""
-read -p "Press Enter to continue to validation checks..."
+[ -t 0 ] && read -p "Press Enter to continue to validation checks..." || true
 echo ""
 
 # Test 2: Package Validation
@@ -58,7 +58,7 @@ fi
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
 echo ""
-read -p "Press Enter to continue to functionality demo..."
+[ -t 0 ] && read -p "Press Enter to continue to functionality demo..." || true
 echo ""
 
 # Test 3: Functionality Demo
@@ -106,7 +106,7 @@ if [ $FAILED_TESTS -eq 0 ]; then
     echo "4. Select open-in-gmail.xpi"
     echo "5. Test by opening an email and clicking the red G button"
     echo ""
-    echo "For detailed instructions, see QUICKSTART.md"
+    echo "For detailed instructions, see README.md"
     echo ""
     exit 0
 else

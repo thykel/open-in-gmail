@@ -197,7 +197,7 @@ console.log('');
 
 // Check documentation
 console.log('6. Validating documentation...');
-const docFiles = ['README.md', 'TESTING.md'];
+const docFiles = ['README.md'];
 docFiles.forEach(doc => {
   const docPath = path.join(__dirname, doc);
   if (fs.existsSync(docPath)) {
@@ -219,7 +219,7 @@ if (errors === 0 && warnings === 0) {
   console.log('✓ All checks passed! Extension is ready for installation.');
   console.log('');
   console.log('Next steps:');
-  console.log('1. Install the extension in Thunderbird (see TESTING.md)');
+  console.log('1. Install the extension in Thunderbird (see README.md)');
   console.log('2. Test with real emails');
   console.log('3. Verify Gmail URLs open correctly');
 } else {
@@ -229,8 +229,10 @@ if (errors === 0 && warnings === 0) {
   if (warnings > 0) {
     console.log(`⚠ ${warnings} warning(s) found`);
   }
-  console.log('');
-  console.log('Please fix the errors before installing the extension.');
+  if (errors > 0) {
+    console.log('');
+    console.log('Please fix the errors before installing the extension.');
+  }
 }
 
 console.log('');
